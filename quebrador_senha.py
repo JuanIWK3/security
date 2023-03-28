@@ -8,7 +8,7 @@ def login(username, password):
     client.set_missing_host_key_policy(AutoAddPolicy())
     client.load_system_host_keys()
     try:
-        client.connect('10.90.37.109', username=username, password=password)
+        client.connect('10.90.37.109', username=username, password=password, timeout=4)
         stdin, stdout, stderr = client.exec_command('gnome-terminal')
         print('[Success]: terminal aberto\n')
     except:
@@ -41,4 +41,3 @@ def inicio():
 if __name__ == '__main__':
 #     print(crypt.crypt("ifmg@2023", "$6$zAHD5VGV"))
      inicio()
-#    login()
