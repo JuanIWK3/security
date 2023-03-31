@@ -1,0 +1,8 @@
+egg
+maca
+laranja
+queijo
+limao
+secreto
+senha
+12345678
