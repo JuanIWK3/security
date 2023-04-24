@@ -2,7 +2,6 @@ import ftplib
 import optparse
 import os
 
-
 def bruteForce(host, pw_file):
     pw_file = open(pw_file, 'r')
 
