@@ -7,7 +7,12 @@ def imprimir_meta(pasta, nome):
     pdfs = []
     for file in os.listdir(pasta):
         if file.split('.')[1] == 'pdf':
-            reader = PdfReader(pasta  + '/' + file)
+            reader = PdfReader(pasta + '/' + file)
+            if reader.metadata == None:
+                continue
+            if reader.metadata.author == None:
+                continue
+            print(reader.metadata.author)
             if reader.metadata.author == nome:
                 pdfs.append(file)
     if len(pdfs) == 0:
@@ -19,12 +24,12 @@ def imprimir_meta(pasta, nome):
 
 
 def main():
-    analisador = optparse.OptionParser("use %prog "+\
-      "-F <pasta com arquivos pdf> -N <nome do autor>")
-    analisador.add_option('-F', dest='pasta',\
-        type='string', help='especifique o arquivo PDF')
-    analisador.add_option('-N', dest='nome',\
-        type='string', help='especifique o nome do autor')
+    analisador = optparse.OptionParser("use %prog " +
+                                       "-F <pasta com arquivos pdf> -N <nome do autor>")
+    analisador.add_option('-F', dest='pasta',
+                          type='string', help='especifique o arquivo PDF')
+    analisador.add_option('-N', dest='nome',
+                          type='string', help='especifique o nome do autor')
 
     (opcoes, args) = analisador.parse_args()
     pasta = opcoes.pasta
