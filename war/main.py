@@ -1,87 +1,108 @@
-import optparse
-from time import sleep
+import argparse
 from bs4 import BeautifulSoup
-import urllib3
 import os
+from PIL import Image
 from PIL.ExifTags import TAGS
 from shutil import copy2
-import exif
-import PIL
+import requests
 
 
-def findImages(url):
-    print('[+] Finding images on ' + url)
-    http = urllib3.PoolManager()
-    response = http.request('GET', url)
-    bs = BeautifulSoup(response.data, 'html.parser')
-    imgTags = bs.findAll('img')
-    return imgTags
-
-
-def downloadImage(imgTag):
+def getPage(url):
     try:
-        imgSrc = imgTag['src']
-        http = urllib3.PoolManager()
-        response = http.request('GET', imgSrc)
-        fileName = imgSrc.split('/')[-1]
-        fileName = fileName.split('?')[0]
-
-        with open("images/" + fileName, 'wb') as f:
-            f.write(response.data)
+        response = requests.get(url).content
+        return response
     except:
+        print('[-] Error retrieving page. Check URL')
         pass
 
-# If the image contains GPS info, save it on images_gps folder
+
+def findImages(url): return [
+    img for img in BeautifulSoup(getPage(url), 'html.parser').find_all('img')
+]
 
 
-def copyImage(fileName):
-    destDir = 'images_gps'
+def getImagesLinks(url):
+    imgTags = findImages(url)
+    imgLinks = []
+    for imgTag in imgTags:
+        if imgTag.has_attr('src'):
+            imgUrl = imgTag['src']
+            imgLinks.append(imgUrl)
+    return imgLinks
+
+
+def fixImageUrl(url):
+    url = url.split('/')[-1].split('?')[0]
+    if '.' not in url:
+        url += '.jpg'
+    return url
+
+
+def downloadImages(url, destDir):
     if not os.path.exists(destDir):
         os.makedirs(destDir)
+
+    imgLinks = getImagesLinks(url)
+
+    for imgLink in imgLinks:
+        try:
+            imgData = requests.get(imgLink).content
+            imgName = fixImageUrl(imgLink)
+            imgPath = destDir + '/' + imgName
+            with open(imgPath, 'wb') as imgFile:
+                imgFile.write(imgData)
+            print('[+] Dowloaded ' + imgName)
+        except:
+            pass
+
+
+def copyImage(fileName, destDir):
+    if not os.path.exists(destDir):
+        os.makedirs(destDir)
+
     copy2(fileName, destDir)
 
 
 def exifTest(fileName):
-    with open(fileName, 'rb') as f:
-        img = exif.Image(f)
-        if img.has_exif:
-            print('[*] ' + fileName + ' contains GPS MetaData')
-            print(img.list_all())
-            copyImage(fileName)
+    print('[*] Testing ' + fileName)
+    try:
+        exifData = {}
+        imgFile = Image.open(fileName)
+        info = imgFile._getexif()
+        if info:
+            for (tag, value) in info.items():
+                decoded = TAGS.get(tag, tag)
+                exifData[decoded] = value
+
+            exifGPS = exifData['GPSInfo']
+            if exifGPS:
+                print('\t[+] ' + fileName + ' contains GPS MetaData')
+                copyImage(fileName)
+            else:
+                pass
+                # print('[-] ' + fileName + ' does not contain GPS MetaData')
         else:
-            # print('[-] ' + fileName + ' does not contain GPS MetaData')
             pass
-
-
-def start():
-    args = optparse.OptionParser('use "-u <url>"')
-    args.add_option('-u', dest='url', type='string', help='specify url')
-    (options, args) = args.parse_args()
-    url = options.url
-
-    destDir = 'images'
-
-    if not os.path.exists(destDir):
-        os.makedirs(destDir)
-
-    if url is None:
-        print(args.usage)
-        exit(0)
-    else:
-        imgTags = findImages(url)
-
-        print('[+] Downloading images to ' + destDir)
-        for imgTag in imgTags:
-            downloadImage(imgTag)
-
-        print('[+] Testing images for GPS Exif Data')
-        for fileName in os.listdir(destDir):
-            exifTest(destDir + '/' + fileName)
-
-        # Delete images that do not contain GPS info
-        for fileName in os.listdir(destDir):
-            os.remove('images/' + fileName)
+            # print('[-] ' + fileName + ' does not contain MetaData')
+    except:
+        pass
 
 
 if __name__ == '__main__':
-    start()
+    args = argparse.ArgumentParser('use "-u <url>"')
+    args.add_argument('-u', '--url', required=True)
+    args = args.parse_args()
+    url = args.url
+
+    destDir = 'images'
+
+    print('\n[+] Dowloading images from ' + url)
+    downloadImages(url, destDir)
+
+    print('\n[*] Testing images for GPS Exif Data')
+    for fileName in os.listdir(destDir):
+        exifTest(destDir + '/' + fileName)
+
+    # Delete images that do not contain GPS info
+    # for fileName in os.listdir(destDir):
+    #     os.remove('images/' + fileName)
