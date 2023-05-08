@@ -1,10 +1,10 @@
-import argparse
 from bs4 import BeautifulSoup
-import os
-from PIL import Image
 from PIL.ExifTags import TAGS
+from PIL import Image
 from shutil import copy2
+import argparse
 import requests
+import os
 
 
 def getPage(url):
@@ -77,7 +77,7 @@ def exifTest(fileName):
             exifGPS = exifData['GPSInfo']
             if exifGPS:
                 print('\t[+] ' + fileName + ' contains GPS MetaData')
-                copyImage(fileName)
+                copyImage(fileName, 'images_gps')
             else:
                 pass
                 # print('[-] ' + fileName + ' does not contain GPS MetaData')
@@ -104,5 +104,5 @@ if __name__ == '__main__':
         exifTest(destDir + '/' + fileName)
 
     # Delete images that do not contain GPS info
-    # for fileName in os.listdir(destDir):
-    #     os.remove('images/' + fileName)
+    for fileName in os.listdir(destDir):
+        os.remove('images/' + fileName)
