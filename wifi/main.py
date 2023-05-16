@@ -8,24 +8,33 @@ import sys
 mac_list = []
 interface = "mon0"
 
+
 # csv format = Registry,Assignment,Organization Name,Organization Address
-
-
 def get_oui_info(mac):
+    mac = mac.replace(":", "").upper().strip()[0:6]
 
-    pass
+    # find the oui in the csv file
+
+    with open("oui.csv", "r") as f:
+        for line in f.readlines():
+            info = line.split(",")
+            if len(info) > 2:
+                if info[1] == mac:
+                    return info[2].strip()
 
 
 def printAccessPoint(mac, ssid):
     print(colored("* Encontrado * ", "red", attrs=["bold"]) + "%s" % (mac),
           colored("Ponto de Acesso", "yellow", attrs=["bold"]), "do SSID:",
           colored(ssid, "green", attrs=["bold"]))
+    print("OUI: %s" % (get_oui_info(mac)))
 
 
 def printClient(mac, ssid):
     print(colored("* Encontrado * ", "red", attrs=["bold"]) + "%s" % (mac),
           colored("Cliente", "yellow", attrs=["bold"]), "do SSID:",
           colored(ssid, "green", attrs=["bold"]))
+    print("OUI: %s" % (get_oui_info(mac)))
 
 
 def analyzePacket(packet):
@@ -43,13 +52,9 @@ def analyzePacket(packet):
 
 
 if __name__ == '__main__':
-    print('---------')
     if len(sys.argv) == 1:
-        mac = [input("Enter MAC Address: ")]
+        mac = input("Enter MAC Address: ")
     else:
-        mac = [item for item in sys.argv[1::]]
-    for addr in mac:
-        get_oui_info(addr)
+        mac = sys.argv[1]
 
-
-# sniff(iface=interface, prn=analyzePacket, store=0)
+    sniff(iface=interface, prn=analyzePacket, store=0)
