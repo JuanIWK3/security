@@ -1,0 +1,7 @@
+administrator:password
+ftpuser:ftp
+admin:12345
+root:secreto
+guest:guest
+root:poderoso
+anonymous:anonymous
